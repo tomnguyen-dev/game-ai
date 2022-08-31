@@ -170,20 +170,20 @@ public class CG
     {
 
 
-        return Xor(Left(a, b, c), Left(a, b, d)) && Xor(Left(c, d, a), Left(c, d, b));
-        
+        //return Xor(Left(a, b, c), Left(a, b, d)) && Xor(Left(c, d, a), Left(c, d, b));
 
-        //if (IntersectProp(a, b, c, d))
-        //    return true;
 
-        //else if (Between(a, b, c)
-        //     || Between(a, b, d)
-        //     || Between(c, d, a)
-        //     || Between(c, d, b))
-        //    return true;
+        if (IntersectProp(a, b, c, d))
+            return true;
 
-        //else
-        //    return false;
+        else if (Between(a, b, c)
+             || Between(a, b, d)
+             || Between(c, d, a)
+             || Between(c, d, b))
+            return true;
+
+        else
+            return false;
     }
 
 
