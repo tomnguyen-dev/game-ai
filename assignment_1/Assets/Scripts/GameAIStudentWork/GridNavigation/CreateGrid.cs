@@ -52,8 +52,6 @@ namespace GameAICourse {
         // This is more efficient than PointInsidePolygon() for an equivalent dimension poly
         public static bool PointInsideBoundingBox(Vector2Int minCellBounds, Vector2Int maxCellBounds, Vector2Int p)
         {
-            Debug.Log("minCellBounds: " + minCellBounds + "     maxCellBounds: " + maxCellBounds + "      p: " + p);
-
             if ((p.x >= minCellBounds.x) &
                 (p.x <= maxCellBounds.x) &
                 (p.y >= minCellBounds.y) &
@@ -85,6 +83,10 @@ namespace GameAICourse {
                 return false;
             }
 
+            if (grid[x, y] == false){
+                return false;
+            }
+
             switch (dir)
             {
                 case TraverseDirection.Up:
@@ -110,6 +112,53 @@ namespace GameAICourse {
             return true;
         }
 
+        public static void ProcessObstacleCorners(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, Vector2Int scaledCanvasDimensions, int scaledCellWidth){
+            // for each obstacle
+            foreach (var obstacle in obstacles){
+
+                // for each vertex in the obstacle
+                foreach (var point in obstacle.getIntegerPoints()){
+                    // check if the vertex is within the bounds of a cell
+                    for (int i = 0; i < scaledGridDimensions.x; i++){
+                        for (int j = 0; j < scaledGridDimensions.y; j++){
+                            // adjust cell to world coordinates using origin and shrink the cell sizes
+                            Vector2Int minCellBounds = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x + 1, j * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                            Vector2Int maxCellBounds = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x - 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y - 1);
+
+                            // check point against minCellBounds and maxCellBounds
+                            if(PointInsideBoundingBox(minCellBounds, maxCellBounds, point))
+                            {
+                                grid[i, j] = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void ProcessInsidePolygon(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, Vector2Int scaledCanvasDimensions, int scaledCellWidth){
+            // go through each obstacle and get their points
+            foreach(var obstacle in obstacles){
+                Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
+
+                // go through each cell and check if the bottom-left corner is inside a point
+                for (int i = 0; i < scaledGridDimensions.x; i++){
+                    for (int j = 0; j < scaledGridDimensions.y; j++){
+                        Vector2Int cellBottomLeft = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x + 1, j * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                        Vector2Int cellBottomRight = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x + 1, j * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                        Vector2Int cellTopLeft = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x + 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                        Vector2Int cellTopRight = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x + 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                        if ((IsPointInsidePolygon(obstaclePoints, cellBottomLeft))  ||
+                            (IsPointInsidePolygon(obstaclePoints, cellBottomRight)) ||
+                            (IsPointInsidePolygon(obstaclePoints, cellTopLeft))     ||
+                            (IsPointInsidePolygon(obstaclePoints, cellTopRight))){
+                            grid[i, j] = false;
+                        }
+                    }
+                }
+            }
+        }
+
         // Create(): Creates a grid lattice discretized space for navigation.
         // canvasOrigin: bottom left corner of navigable region in world coordinates
         // canvasWidth: width of navigable region in world dimensions
@@ -123,98 +172,37 @@ namespace GameAICourse {
             out bool[,] grid
             )
         {
-            // ignoring the obstacles for this limited demo; 
+            // ignoring the obstacles for this limited demo;
             // Marks cells of the grid untraversable if geometry intersects interior!
             // Carefully consider all possible geometry interactions
 
             // also ignoring the world boundary defined by canvasOrigin and canvasWidth and canvasHeight
 
-            // create grid to match size of canvas
-            
-            Vector2 canvasVector;
-            canvasVector.x = canvasWidth;
-            canvasVector.y = canvasHeight;
+            // convert canvas dimensions to a Vector2Int using scaling factor
+            Vector2Int scaledCanvasDimensions = Convert(new Vector2(canvasWidth, canvasHeight));
 
-            Vector2Int convertedCanvasVector = Convert(canvasVector);
+            // scale the cellWidth
+            int scaledCellWidth = Convert(cellWidth);
+
+            // find the grid counts based on the scaled canvas dimensions and scaled cell widths
+            Vector2Int scaledGridDimensions = new Vector2Int(scaledCanvasDimensions.x / scaledCellWidth, scaledCanvasDimensions.y / scaledCellWidth);
+
+            // create grid and set everything to true
+            grid = new bool[scaledGridDimensions.x, scaledGridDimensions.y];
+            for(int i = 0; i < scaledGridDimensions.x; i++){
+                for(int j = 0; j < scaledGridDimensions.y; j++){
+                    grid[i,j] = true;
+                }
+            }
+
+            // convert the origin to a Vector2Int
             Vector2Int convertedCanvasOrigin = Convert(canvasOrigin);
-            Vector2Int offsetOrigin = convertedCanvasOrigin * -1;
 
-            int convertedCellWidth = Convert(cellWidth);
-            //Debug.Log("canvasDimensions: " + convertedCanvasVector + "    canvasCell: " + convertedCellWidth + "   canvas origin: " + convertedCanvasOrigin);
+            // check the corners for each obstacle
+            ProcessObstacleCorners(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCanvasDimensions, scaledCellWidth);
 
-            int heightCount = convertedCanvasVector.y / convertedCellWidth;
-            int widthCount = convertedCanvasVector.x / convertedCellWidth;
-
-            grid = new bool[widthCount, heightCount];
-
-            // fill array with true
-            for(int i=0; i<widthCount; i++)
-            {
-                for(int j=0; j<heightCount; j++)
-                {
-                    grid[i, j] = true;
-                }
-            }
-
-            // for each obstacle, find each point
-            foreach(var obstacle in obstacles)
-            {
-
-                Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
-
-                foreach(var point in obstaclePoints)
-                {
-                    int x = point.x;
-                    int y = point.y;
-
-                    int offset_x = x + offsetOrigin.x;
-                    int offset_y = y + offsetOrigin.y;
-
-                    Vector2Int offset_point = new Vector2Int(offset_x, offset_y);
-
-                    for (int i = 0; i < widthCount; i++)
-                    {
-                        for (int j = 0; j < heightCount; j++)
-                        {
-                            Vector2Int minBounds = new Vector2Int(i * convertedCellWidth+1, j * convertedCellWidth+1);
-                            Vector2Int maxBounds = new Vector2Int((i + 1) * convertedCellWidth-1, (j + 1) * convertedCellWidth-1);
-
-                            // check points
-                            if (PointInsideBoundingBox(minBounds, maxBounds, offset_point))
-                            {
-                                grid[i, j] = false;
-                            }
-
-                        }
-                    }
-                }
-
-                // check if edges intersect
-                var len = obstaclePoints.Length;
-                for (int i = 0, j = len - 1; i < len; j = i++){
-                    var pt1 = obstaclePoints[j];
-                    var pt2 = obstaclePoints[i];
-
-                    Debug.Log("pt1: " + pt1 + "        pt2: " + pt2);
-
-                    for (int k = 0; k < widthCount; k++)
-                    {
-                        for (int m = 0; m < heightCount; m++)
-                        {
-                            Vector2Int cell_origin = new Vector2Int(k * convertedCellWidth, m * convertedCellWidth); //bottom-left
-                            Vector2Int cell_top_left = new Vector2Int(cell_origin.x, cell_origin.y + convertedCellWidth);
-
-                            if (Intersects(pt1, pt2, cell_origin, cell_top_left))
-                            {
-                                grid[k, m] = false;
-                            }
-                        }
-                    }
-                }
-            }
-
+            // check for points inside obstacles
+            ProcessInsidePolygon(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCanvasDimensions, scaledCellWidth);
         }
-
     }
-
 }
