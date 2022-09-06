@@ -16,7 +16,7 @@ namespace GameAICourse
     {
 
         // Please change this string to your name
-        public const string StudentAuthorName = "George P. Burdell ← Not your name, change it!";
+        public const string StudentAuthorName = "Tom Nguyen";
 
 
         // Null Heuristic for Dijkstra
