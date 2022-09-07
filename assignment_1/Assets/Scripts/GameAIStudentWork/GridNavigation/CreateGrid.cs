@@ -71,18 +71,22 @@ namespace GameAICourse {
         // returns false if x,y is out of range
         public static bool IsTraversable(bool[,] grid, int x, int y, TraverseDirection dir)
         {
+            // Debug.Log("x: " + x + "      y: " + y + "       dir: " + dir);
+            int gridWidth  = grid.GetLength(0) - 1;
+            int gridHeight = grid.GetLength(1) - 1;
+
+            // returns false if the grid is null
             if (grid == null){
                 return false;
             }
 
-            if (grid.GetLength(0) == 0){
+            // or any dimension of grid is zero length
+            if (gridWidth == 0 || gridHeight == 0){
                 return false;
             }
 
-            if (grid.GetLength(1) == 0){
-                return false;
-            }
-
+            // If the grid position x,y is itself not traversable but the grid cell in direction
+            // dir is traversable, the function will return false.
             if (grid[x, y] == false){
                 return false;
             }
@@ -90,26 +94,34 @@ namespace GameAICourse {
             switch (dir)
             {
                 case TraverseDirection.Up:
-                    return grid[x, y + 1];
+                    if (y+1 <= gridHeight){return grid[x, y + 1];}
+                    break;
                 case TraverseDirection.Down:
-                    return grid[x, y - 1];
+                    if (y-1 >= 0){return grid[x, y - 1];}
+                    break;
                 case TraverseDirection.Left:
-                    return grid[x - 1, y];
+                    if (x-1 >= 0){return grid[x - 1, y];}
+                    break;
                 case TraverseDirection.Right:
-                    return grid[x + 1, y];
+                    if (x+1 <= gridWidth){return grid[x + 1, y];}
+                    break;
                 case TraverseDirection.UpLeft:
-                    return grid[x - 1, y + 1];
+                    if (x-1 >= 0 & y+1 <= gridHeight) {return grid[x - 1, y + 1];}
+                    break;
                 case TraverseDirection.UpRight:
-                    return grid[x + 1, y + 1];
+                    if (x+1 <= gridWidth & y+1 <= gridHeight) {return grid[x + 1, y + 1];}
+                    break;
                 case TraverseDirection.DownLeft:
-                    return grid[x - 1, y - 1];
+                    if (x-1 >= 0 & y-1 >= 0) {return grid[x - 1, y - 1];}
+                    break;
                 case TraverseDirection.DownRight:
-                    return grid[x - 1, y + 1];
+                    if (x-1 >= 0 & y+1 <= gridHeight) {return grid[x - 1, y + 1];}
+                    break;
                 default:
                     break;
             }
 
-            return true;
+            return false;
         }
 
         public static void ProcessObstacleCorners(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, Vector2Int scaledCanvasDimensions, int scaledCellWidth){
@@ -194,6 +206,9 @@ namespace GameAICourse {
                     grid[i,j] = true;
                 }
             }
+
+            // grid[1,1] = true;
+            // grid[1,2] = true;
 
             // convert the origin to a Vector2Int
             Vector2Int convertedCanvasOrigin = Convert(canvasOrigin);
