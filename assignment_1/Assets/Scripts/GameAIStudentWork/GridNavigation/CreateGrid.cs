@@ -148,18 +148,18 @@ namespace GameAICourse {
             }
         }
 
-        public static void ProcessInsidePolygon(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, Vector2Int scaledCanvasDimensions, int scaledCellWidth){
+        public static void ProcessInsidePolygon(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, int scaledCellWidth){
             // go through each obstacle and get their points
             foreach(var obstacle in obstacles){
                 Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
 
-                // go through each cell and check if the bottom-left corner is inside a point
+                // go through each cell and check if the corners are inside a point
                 for (int i = 0; i < scaledGridDimensions.x; i++){
                     for (int j = 0; j < scaledGridDimensions.y; j++){
                         Vector2Int cellBottomLeft = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x + 1, j * scaledCellWidth + convertedCanvasOrigin.y + 1);
                         Vector2Int cellBottomRight = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x + 1, j * scaledCellWidth + convertedCanvasOrigin.y + 1);
-                        Vector2Int cellTopLeft = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x + 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y + 1);
-                        Vector2Int cellTopRight = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x + 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                        Vector2Int cellTopLeft = new Vector2Int(i * scaledCellWidth + convertedCanvasOrigin.x - 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y - 1);
+                        Vector2Int cellTopRight = new Vector2Int((i+1) * scaledCellWidth + convertedCanvasOrigin.x - 1, (j+1) * scaledCellWidth + convertedCanvasOrigin.y - 1);
                         if ((IsPointInsidePolygon(obstaclePoints, cellBottomLeft))  ||
                             (IsPointInsidePolygon(obstaclePoints, cellBottomRight)) ||
                             (IsPointInsidePolygon(obstaclePoints, cellTopLeft))     ||
@@ -169,6 +169,38 @@ namespace GameAICourse {
                     }
                 }
             }
+        }
+
+        public static void ProcessEdges(ref bool[,] grid, List<Polygon> obstacles, Vector2Int convertedCanvasOrigin, Vector2Int scaledGridDimensions, Vector2Int scaledCanvasDimensions, int scaledCellWidth){
+            // go through each obstacle and get their points
+            foreach(var obstacle in obstacles){
+                Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
+
+                // for each edge in the obstacles, check if it intersects with the lines of each cell
+                for (int i = 0, j = obstaclePoints.Length - 1; i < obstaclePoints.Length; j = i++){
+                    var obstaclePt1 = obstaclePoints[j];
+                    var obstaclePt2 = obstaclePoints[i];
+
+                    // now get each edge of each cell
+                    for (int k = 0; k < scaledGridDimensions.x; k++){
+                        for (int m = 0; m < scaledGridDimensions.y; m++){
+                            // each cell point
+                            Vector2Int cellBottomLeft = new Vector2Int(k * scaledCellWidth + convertedCanvasOrigin.x + 1, m * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                            Vector2Int cellBottomRight = new Vector2Int((k+1) * scaledCellWidth + convertedCanvasOrigin.x + 1, m * scaledCellWidth + convertedCanvasOrigin.y + 1);
+                            Vector2Int cellTopLeft = new Vector2Int(k * scaledCellWidth + convertedCanvasOrigin.x - 1, (m+1) * scaledCellWidth + convertedCanvasOrigin.y - 1);
+                            Vector2Int cellTopRight = new Vector2Int((k+1) * scaledCellWidth + convertedCanvasOrigin.x - 1, (m+1) * scaledCellWidth + convertedCanvasOrigin.y - 1);
+
+                            if ((Intersects(obstaclePt1, obstaclePt2, cellBottomLeft, cellTopLeft))     || // left edge
+                                (Intersects(obstaclePt1, obstaclePt2, cellTopLeft, cellTopRight))       || // top edge
+                                (Intersects(obstaclePt1, obstaclePt2, cellTopRight, cellBottomRight))   || // right edge
+                                (Intersects(obstaclePt1, obstaclePt2, cellBottomLeft, cellBottomRight))){ // bottom edge
+                                grid[k, m] = false;
+                            }
+                        }
+                    }
+                }
+            }
+
         }
 
         // Create(): Creates a grid lattice discretized space for navigation.
@@ -207,9 +239,6 @@ namespace GameAICourse {
                 }
             }
 
-            // grid[1,1] = true;
-            // grid[1,2] = true;
-
             // convert the origin to a Vector2Int
             Vector2Int convertedCanvasOrigin = Convert(canvasOrigin);
 
@@ -217,7 +246,10 @@ namespace GameAICourse {
             ProcessObstacleCorners(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCanvasDimensions, scaledCellWidth);
 
             // check for points inside obstacles
-            ProcessInsidePolygon(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCanvasDimensions, scaledCellWidth);
+            ProcessInsidePolygon(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCellWidth);
+
+            // check for edges
+            ProcessEdges(ref grid, obstacles, convertedCanvasOrigin, scaledGridDimensions, scaledCanvasDimensions, scaledCellWidth);
         }
     }
 }
