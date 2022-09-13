@@ -13,7 +13,7 @@ namespace GameAICourse
     public class CreatePathNetwork
     {
 
-        public const string StudentAuthorName = "George P. Burdell ← Not your name, change it!";
+        public const string StudentAuthorName = "Tom Nguyen";
 
 
 
@@ -79,6 +79,8 @@ namespace GameAICourse
 
             //STUDENT CODE HERE
 
+            // pathEdges[0] = pathNodes[0]
+            // pathedges[0] = {1, 2, 3} means node 0 has an edge to node 1, 2, and 3
             pathEdges = new List<List<int>>(pathNodes.Count);
 
             for (int i = 0; i < pathNodes.Count; ++i)
@@ -86,6 +88,52 @@ namespace GameAICourse
                 pathEdges.Add(new List<int>());
             }
 
+            // convert parameters
+            Vector2Int convertedCanvasOrigin = Convert(canvasOrigin);
+
+            int convertedAgentRadius = Convert(agentRadius);
+
+            // find max x and y values
+            int maxHorizontalBoundary = convertedCanvasOrigin.x + Convert(canvasWidth);
+            int maxVerticalBoundary   = convertedCanvasOrigin.y + Convert(canvasHeight);
+
+            // first check if the nodes are inside the canvas and not under an obstacle
+            List<int> validNodeIndices = new List<int>();
+
+            for (int i = 0; i < pathNodes.Count; i++){
+                Vector2Int convertedNode = Convert(pathNodes[i]);
+                if ((convertedNode.x - convertedAgentRadius >= convertedCanvasOrigin.x) &&
+                    (convertedNode.x + convertedAgentRadius <= maxHorizontalBoundary)   &&
+                    (convertedNode.y - convertedAgentRadius >= convertedCanvasOrigin.y) &&
+                    (convertedNode.y + convertedAgentRadius <= maxVerticalBoundary)) {
+
+                    // if node is inside the canvas, then get the points of the node
+                    Vector2Int topPoint = new Vector2Int(convertedNode.x, convertedNode.y + convertedAgentRadius);
+                    Vector2Int btmPoint = new Vector2Int(convertedNode.x, convertedNode.y - convertedAgentRadius);
+                    Vector2Int lftPoint = new Vector2Int(convertedNode.x - convertedAgentRadius, convertedNode.y);
+                    Vector2Int rgtPoint = new Vector2Int(convertedNode.x + convertedAgentRadius, convertedNode.y);
+
+                    bool insidePolygon = false;
+
+                    // check each obstacle
+                    foreach (var obstacle in obstacles){
+                        Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
+                        // check if the 5 points of the node are inside an obstacle
+                        if ((IsPointInPolygon(obstaclePoints, convertedNode)) ||
+                            (IsPointInPolygon(obstaclePoints, topPoint))      ||
+                            (IsPointInPolygon(obstaclePoints, btmPoint))      ||
+                            (IsPointInPolygon(obstaclePoints, lftPoint))      ||
+                            (IsPointInPolygon(obstaclePoints, rgtPoint))){
+                                insidePolygon = true;
+                            }
+                    }
+                    if (!insidePolygon) {validNodeIndices.Add(i);}
+                }
+            }
+
+            foreach (var item in validNodeIndices){
+                Debug.Log(item);
+            }
 
             // END STUDENT CODE
 
