@@ -131,8 +131,32 @@ namespace GameAICourse
                 }
             }
 
-            foreach (var item in validNodeIndices){
-                Debug.Log(item);
+            // process edges between legal nodes and see if they intersect edges of obstacles
+            for (int i = 0; i < validNodeIndices.Count-1; i++){
+                for (int j = i+1; j < validNodeIndices.Count; j++){
+
+                    bool edgeIntersected = false;
+                    Vector2Int convertedSrcNode = Convert(pathNodes[validNodeIndices[i]]);
+                    Vector2Int convertedDesNode = Convert(pathNodes[validNodeIndices[j]]);
+
+                    // get edges of each obstacle
+                    foreach (var obstacle in obstacles){
+                        Vector2Int[] obstaclePoints = obstacle.getIntegerPoints();
+                        for (int k = 0, m = obstaclePoints.Length - 1; k < obstaclePoints.Length; m = k++){
+                            var obstaclePt1 = obstaclePoints[m];
+                            var obstaclePt2 = obstaclePoints[k];
+
+                            if (Intersects(obstaclePt1, obstaclePt2, convertedSrcNode, convertedDesNode)){
+                                edgeIntersected = true;
+                            }
+                        }
+                    }
+
+                    if (!edgeIntersected) {
+                        pathEdges[validNodeIndices[i]].Add(validNodeIndices[j]);
+                        pathEdges[validNodeIndices[j]].Add(validNodeIndices[i]);
+                    }
+                }
             }
 
             // END STUDENT CODE
