@@ -1,5 +1,4 @@
-﻿// compile_check
-// Remove the line above if you are subitting to GradeScope for a grade. But leave it if you only want to check
+﻿// Remove the line above if you are subitting to GradeScope for a grade. But leave it if you only want to check
 // that your code compiles and the autograder can access your public methods.
 
 using System;
@@ -147,6 +146,13 @@ namespace GameAICourse
                             var obstaclePt2 = obstaclePoints[k];
 
                             if (Intersects(obstaclePt1, obstaclePt2, convertedSrcNode, convertedDesNode)){
+                                edgeIntersected = true;
+                            }
+                        }
+
+                        // check if obstacle points are close to edges
+                        foreach (var point in obstaclePoints){
+                            if (DistanceToLineSegment(point, convertedSrcNode, convertedDesNode) < convertedAgentRadius){
                                 edgeIntersected = true;
                             }
                         }
