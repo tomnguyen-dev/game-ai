@@ -36,25 +36,13 @@ namespace GameAICourse
         // Heuristic distance fuction implemented with manhattan distance
         public static float HeuristicManhattan(Vector2 nodeA, Vector2 nodeB)
         {
-            //STUDENT CODE HERE
-
-            // The following code is just a placeholder so that the method has a valid return
-            // You will replace it with the correct implementation
-            return 0f;
-
-            //END CODE 
+            return Mathf.Abs(nodeA.x - nodeB.x) + Mathf.Abs(nodeA.y - nodeB.y);
         }
 
         // Heuristic distance function implemented with Euclidean distance
         public static float HeuristicEuclidean(Vector2 nodeA, Vector2 nodeB)
         {
-            //STUDENT CODE HERE
-
-            // The following code is just a placeholder so that the method has a valid return
-            // You will replace it with the correct implementation
-            return 0f;
-
-            //END CODE 
+            return Mathf.Abs(Vector2.Distance(nodeA, nodeB));
         }
 
 
@@ -63,13 +51,7 @@ namespace GameAICourse
         // But we will avoid that for simplicity.
         public static float Cost(Vector2 nodeA, Vector2 nodeB)
         {
-            //STUDENT CODE HERE
-
-            // The following code is just a placeholder so that the method has a valid return
-            // You will replace it with the correct implementation
-            return 0f;
-
-            //END STUDENT CODE
+            return Mathf.Abs(Vector2.Distance(nodeA, nodeB));
         }
 
 
@@ -83,7 +65,7 @@ namespace GameAICourse
             int startNodeIndex, int goalNodeIndex,
             int maxNumNodesToExplore, bool doInitialization,
             ref int currentNodeIndex,
-            ref Dictionary<int, PathSearchNodeRecord> searchNodeRecords,
+            ref Dictionary<int, PathSearchNodeRecord> searchNodeRecords,    // don't forget to add goal node unless it isn't reachable
             ref SimplePriorityQueue<int, float> openNodes, ref HashSet<int> closedNodes, ref List<int> returnPath)
         {
             PathSearchResultType pathResult = PathSearchResultType.InProgress;
