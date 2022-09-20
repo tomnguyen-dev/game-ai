@@ -86,51 +86,49 @@ namespace GameAICourse
 
             //pathResult = PathSearchResultType.Complete;
 
-            if (doInitialization){
+            if (doInitialization)
+            {
                 searchNodeRecords = new Dictionary<int, PathSearchNodeRecord>();
 
                 // initialize the record for the start node
-                PathSearchNodeRecord startRecord = new PathSearchNodeRecord(startNodeIndex);
+                var startRecord = new PathSearchNodeRecord(startNodeIndex);
 
                 // add startRecord to the searchNodeRecords
-                searchNodeRecords.Add(startNodeIndex, startRecord);
-                Vector2 startVector = getNode(startNodeIndex);
+                searchNodeRecords.Add(startRecord.NodeIndex, startRecord);
 
                 // initialize the open and closed lists
                 openNodes = new SimplePriorityQueue<int, float>();
-                openNodes.Enqueue(startRecord.NodeIndex, H(startVector, startVector));
+                openNodes.Enqueue(startRecord.NodeIndex, 0f);
 
                 closedNodes = new HashSet<int>();
+                returnPath = new List<int>();
             }
 
             // iterate through processing each node
-            while (openNodes.Count > 0){
+            while (openNodes.Count > 0)
+            {
                 // find the smallest element in the open list (using estimatedTotalCost)
-                float smallestCost = 10000;
-                int current = -1;
-                Vector2 currIdxVector = getNode(currentNodeIndex);
-
-                // loop through all nodes in openNodes and find the one with the smallest cost
-                foreach (var node in openNodes){
-                    Vector2 candidateNode = getNode(node);
-
-                    if (H(currIdxVector, candidateNode) < smallestCost){
-                        smallestCost = H(currIdxVector, candidateNode);
-                        current      = node;
-                    }
-                }
+                var currentNodeRecord = searchNodeRecords[openNodes.First];
+                currentNodeIndex = currentNodeRecord.NodeIndex;
 
                 // if it is the goal node, then terminate
-                if (current == goalNodeIndex){
+                if (currentNodeIndex == goalNodeIndex)
+                {
                     break;
                 }
 
-                // otherwise get itds outgoing connections
-                List<int> connections = getAdjacencies(current);
+                // otherwise get its outgoing connections
+                List<int> connections = getAdjacencies(currentNodeIndex);
+
+                // loop through each connection in turn
+                foreach (var connection in connections)
+                {
+                    float endNodeCost = currentNodeRecord.CostSoFar + G(getNode(currentNodeIndex), getNode(connection));
+                }
             }
 
             //returnPath.Add(startNodeIndex);
-            returnPath = new List<int>();
+
             return pathResult;
 
             //END STUDENT CODE HERE
