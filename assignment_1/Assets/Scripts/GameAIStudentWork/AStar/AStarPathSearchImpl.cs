@@ -93,9 +93,6 @@ namespace GameAICourse
                 // initialize the record for the start node
                 var startRecord = new PathSearchNodeRecord(startNodeIndex);
 
-                // add startRecord to the searchNodeRecords
-                searchNodeRecords.Add(startRecord.NodeIndex, startRecord);
-
                 // initialize the open and closed lists
                 openNodes = new SimplePriorityQueue<int, float>();
                 openNodes.Enqueue(startRecord.NodeIndex, 0f);
@@ -114,20 +111,107 @@ namespace GameAICourse
                 // if it is the goal node, then terminate
                 if (currentNodeIndex == goalNodeIndex)
                 {
+                    pathResult = PathSearchResultType.Complete;
                     break;
                 }
 
                 // otherwise get its outgoing connections
                 List<int> connections = getAdjacencies(currentNodeIndex);
 
+                // endNode Record
+                PathSearchNodeRecord endNodeRecord = null;
+
                 // loop through each connection in turn
-                foreach (var connection in connections)
+                foreach (var connectionIndex in connections)
                 {
-                    float endNodeCost = currentNodeRecord.CostSoFar + G(getNode(currentNodeIndex), getNode(connection));
+                    float endNodeCost = currentNodeRecord.CostSoFar + G(getNode(currentNodeIndex), getNode(connectionIndex));
+                    float endNodeHeuristic = 0f;
+                    // if the node is closed we may have to skip or remove it
+                    // from the closed list
+                    if (closedNodes.Contains(connectionIndex))
+                    {
+                        // find the record in the closed list
+                        // corresponding to the endNode
+                        endNodeRecord = searchNodeRecords[connectionIndex];
+
+                        // if we didn't find a shorter route, skip
+                        if (endNodeRecord.CostSoFar <= endNodeCost)
+                        {
+                            continue;
+                        }
+
+                        // otherwise remove it from the closed list
+                        closedNodes.Remove(connectionIndex);
+
+                        // we can use the node's old cost values to calculate its heuristic
+                        // without calling the possibly expensive heuristic function
+                        endNodeHeuristic = endNodeRecord.EstimatedTotalCost -
+                                           endNodeRecord.CostSoFar;
+                    }
+
+                    // skip if the node is open and we've not found a better route
+                    else if (openNodes.Contains(connectionIndex))
+                    {
+                        // here we find the record in the open list corresponding to the endNode
+                        endNodeRecord = searchNodeRecords[connectionIndex];
+
+                        // if our route is no better, then skip
+                        if (endNodeRecord.CostSoFar <= endNodeCost)
+                        {
+                            continue;
+                        }
+
+                        // again, we calculate its heuristic
+                        endNodeHeuristic = endNodeRecord.EstimatedTotalCost -
+                                           endNodeRecord.CostSoFar;
+                    }
+
+                    // otherwise we know we've got an unvisited node,
+                    // so make a record for it
+                    else
+                    {
+                        endNodeRecord = new PathSearchNodeRecord(connectionIndex);
+
+                        // calculate the heuristic value using the function
+                        endNodeHeuristic = H(getNode(currentNodeIndex), getNode(connectionIndex));
+                    }
+
+                    // we're here if we need to update the node. Update cost, estimate, and connection
+                    endNodeRecord.CostSoFar          = endNodeCost;
+                    endNodeRecord.FromNodeIndex      = connectionIndex;
+                    endNodeRecord.EstimatedTotalCost = endNodeCost + endNodeHeuristic;
+
+                    // and add it to the open list
+                    if (!openNodes.Contains(connectionIndex))
+                    {
+                        openNodes.Enqueue(connectionIndex, endNodeHeuristic);
+                    }
                 }
+
+                // we've finished looking at the connections for the current node, so add it to the
+                // closed list andr emove it from the open list
+                openNodes.Remove(currentNodeIndex);
+                closedNodes.Add(currentNodeIndex);
             }
 
-            //returnPath.Add(startNodeIndex);
+            // we're here if we've either found the goal or if we've no more nodes to search, find which
+            if (currentNodeIndex != goalNodeIndex)
+            {
+                // we've run out of nodes without finding the goal, so there's no solution
+                pathResult = PathSearchResultType.Partial;
+                //return null;
+            }
+            else
+            {
+                // compile the list of connections in the path
+                while (currentNodeIndex != startNodeIndex)
+                {
+                    returnPath.Add(currentNodeIndex);
+                    currentNodeIndex = searchNodeRecords[currentNodeIndex].FromNodeIndex;
+                }
+                returnPath.Add(startNodeIndex);
+                returnPath.Reverse();
+            }
 
             return pathResult;
 
