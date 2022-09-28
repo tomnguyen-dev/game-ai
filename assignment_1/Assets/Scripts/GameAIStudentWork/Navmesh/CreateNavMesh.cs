@@ -98,18 +98,19 @@ namespace GameAICourse
         // that are ON the tri edge and BETWEEN the start and end point.
         static public bool IsVertexOnEdge(Vector2Int V1, Vector2Int V2, List<Vector2Int> obstacleVertices)
         {
-            var isBetween = false;
-
             var obstVertCount = obstacleVertices.Count;
             for (int i = 0; i < obstVertCount - 2; ++i)
             {
                 if (obstacleVertices[i] != V1 && obstacleVertices[i] != V2)
                 {
-                    isBetween = Between(V1, V2, obstacleVertices[i]);
+                    if(Between(V1, V2, obstacleVertices[i]))
+                    {
+                        return true;
+                    }
                 }
             }
 
-            return isBetween;
+            return false;
         }
 
 
