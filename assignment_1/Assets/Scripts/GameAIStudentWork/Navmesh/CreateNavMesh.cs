@@ -404,6 +404,7 @@ namespace GameAICourse
             // At the beginning of this process, you should make a copy of adjPolys. Continue
             // reading below to see why. You can SHALLOW copy like this:
             // newAdjPolys = new AdjacentPolygons(adjPolys);
+            AdjacentPolygons copyAdjPolys = new AdjacentPolygons(adjPolys);
             //
             // Iterate through adjPolys.Keys (type:CommonPolygonEdge) and get the value
             // (type:CommonPolygons) for each key. This structure identifies only one polygon
@@ -430,6 +431,36 @@ namespace GameAICourse
             // Similar to the updates to newAdjPolys, you also want to remove old polys
             // and add the new poly to navMeshPolygons.
             // When your loop is finished, don't forget to set adjPolys to newAdjPolys.
+            int mergeCount;
+
+            do
+            {
+                mergeCount = 0;
+                foreach (var key in adjPolys.Keys)
+                {
+                    var commonPoly = adjPolys[key];
+
+                    if (!commonPoly.IsBarrier)
+                    {
+                        Polygon candidatePoly = MergePolygons(commonPoly.AB, commonPoly.BA, commonPoly.CommonEdge.A, commonPoly.CommonEdge.B);
+
+                        // valid poly
+                        if (IsConvex(candidatePoly.getIntegerPoints()))
+                        {
+                            copyAdjPolys.Remove(key);
+                            copyAdjPolys.AddPolygon(candidatePoly, commonPoly.AB, commonPoly.BA);
+
+                            navmeshPolygons.Remove(commonPoly.AB);
+                            navmeshPolygons.Remove(commonPoly.BA);
+                            navmeshPolygons.Add(candidatePoly);
+
+                            mergeCount++;
+                        }
+                    }
+                }
+                adjPolys = copyAdjPolys;
+            }
+            while (mergeCount > 0);
 
             // TODO At this point you can visualize a single pass of the merging (e.g. test your
             // code). After that, wrap it all in a loop that tries successive passes of
