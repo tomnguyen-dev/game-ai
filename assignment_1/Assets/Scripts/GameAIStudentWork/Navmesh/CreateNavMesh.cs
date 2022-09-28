@@ -490,6 +490,29 @@ namespace GameAICourse
             // If you have resolved dev issues 1.) and 2.), you can then work with adjPolys
             // to create your edges!
 
+            Dictionary<Polygon, int> polygonNodes = new Dictionary<Polygon, int>();
+            int nodeIndex = 0;
+            foreach (var polygon in navmeshPolygons)
+            {
+                var centroid = polygon.GetCentroid();
+                polygonNodes[polygon] = nodeIndex;
+                nodeIndex++;
+
+                // populate pathNodes with the Vector2 centroids
+                pathNodes.Add(centroid);
+
+                // prime pathEdges with empty lists
+                pathEdges[nodeIndex] = new List<int>();
+            }
+
+            foreach (var key in adjPolys.Keys)
+            {
+                var commonPoly = adjPolys[key];
+
+                var centroidAB = commonPoly.AB.GetCentroid();
+                var centroidBA = commonPoly.BA.GetCentroid();
+            }
+
 
             // ***************************** FINAL **********************************************
             // Once you have completed everything, you will probably find that the code
