@@ -1,4 +1,4 @@
-﻿// compile_check
+﻿
 // Remove the line above if you are subitting to GradeScope for a grade. But leave it if you only want to check
 // that your code compiles and the autograder can access your public methods.
 
@@ -491,28 +491,31 @@ namespace GameAICourse
             // to create your edges!
 
             Dictionary<Polygon, int> polygonNodes = new Dictionary<Polygon, int>();
-            int nodeIndex = 0;
+            int polygonIndex = 0;
+
             foreach (var polygon in navmeshPolygons)
             {
-                var centroid = polygon.GetCentroid();
-                polygonNodes[polygon] = nodeIndex;
-                nodeIndex++;
+                // populated with pathNode indices by iterating over navmeshPolygons
+                polygonNodes.Add(polygon, polygonIndex);
 
-                // populate pathNodes with the Vector2 centroids
+                //populate pathNodes with the Vector2 centroids
+                var centroid = polygon.GetCentroid();
                 pathNodes.Add(centroid);
 
-                // prime pathEdges with empty lists
-                pathEdges[nodeIndex] = new List<int>();
+                // prime the pathEdges with empty lists
+                pathEdges.Add(new List<int>());
+                polygonIndex++;
             }
 
             foreach (var key in adjPolys.Keys)
             {
                 var commonPoly = adjPolys[key];
-
-                var centroidAB = commonPoly.AB.GetCentroid();
-                var centroidBA = commonPoly.BA.GetCentroid();
+                if (!commonPoly.IsBarrier)
+                {
+                    pathEdges[polygonNodes[commonPoly.AB]].Add(polygonNodes[commonPoly.BA]);
+                    pathEdges[polygonNodes[commonPoly.BA]].Add(polygonNodes[commonPoly.AB]);
+                }
             }
-
 
             // ***************************** FINAL **********************************************
             // Once you have completed everything, you will probably find that the code
