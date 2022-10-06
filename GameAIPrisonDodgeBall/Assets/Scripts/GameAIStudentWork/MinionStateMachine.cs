@@ -102,40 +102,70 @@ public class MinionStateMachine : MonoBehaviour
         // It only exists to simplify compatibility with the ShootingRange
         out float altT)
     {
-        // TODO implement an accurate throw with prediction. This is just a placeholder
-
-        // FYI, if Minion.transform.position is sent via param targetPos,
-        // be aware that this is the midpoint of Minion's capsuleCollider
-        // (Might not be true of other agents in Unity though. Just keep in mind for future game dev)
-
-        // Only going 2D for simple demo. this is not useful for proper prediction
-        // Basically, avoiding throwing down at enemies since we aren't predicting accurately here.
-        var targetPos2d = new Vector3(targetInitPos.x, 0f, targetInitPos.z);
-        var launchPos2d = new Vector3(projectilePos.x, 0f, projectilePos.z);
-
-        var relVec = (targetPos2d - launchPos2d);
-        interceptT = relVec.magnitude / maxProjectileSpeed;
-        altT = -1f;
-
-        // This is a hard-coded approximate sort of of method to figure out a loft angle
-        // This is NOT the right thing to do for your prediction code!
-        var normAngle = Mathf.Lerp(0f, 20f, interceptT * 0.007f);
-        var v = Vector3.Slerp(relVec.normalized, Vector3.up, normAngle);
-
-        // Make sure this is normalized! (The direction of your throw)
-        projectileDir = v;
+        interceptT = -1;
+        altT = interceptT;
+        projectileDir = new Vector3(-1, -1, -1);
 
         // You'll probably want to leave this as is. For advanced prediction you can slow your throw down
         // You don't need to predict the speed of your throw. Only the direction assuming full speed
         projectileSpeed = maxProjectileSpeed;
 
-        // TODO return true or false based on whether target can actually be hit
-        // This implementation just thinks, "I guess so?", and returns true
-        // Implementations that don't exactly solve intercepts will need to test the approximate
-        // solution with maxAllowedErrorDist. If your solution does solve exactly, you will
-        // probably want to add a debug assertion to check your solution against it.
-        return true;
+        // try Law of Cosines
+        // a^2 + b^2 - 2abcos0 = c^2
+        // (projectile speed - target speed)(time of collision)^2 + (2a * target speed * ^a * ^b)(time of collision) - a^2 = 0
+        // a = |initial projectile pos - initial target pos|
+        // b = speed of target * time of collision
+        // c = speed of projectile * time of collision
+        // cos0 = unitvec(a) * unitvec(b)
+        Vector3 rel_pos   = (projectilePos - targetInitPos);
+        float loc_a       = rel_pos.magnitude;
+        float targetSpeed = targetConstVel.magnitude;
+        float cos_theta   = Vector3.Dot((rel_pos).normalized, targetConstVel.normalized);
 
+        var rel_speed   = (Mathf.Pow(projectileSpeed, 2) - Mathf.Pow(targetSpeed, 2));
+        var denominator = 2 * rel_speed;
+        // zero denominator, return false
+        if (denominator < 0) {return false;}
+
+        var radical     = 2 * loc_a * targetSpeed * cos_theta;
+        var radicand    = Mathf.Pow(radical, 2) + ((4 * rel_speed) * Mathf.Pow(loc_a, 2));
+        var sqrtRadicand = Mathf.Sqrt(radicand);
+        // negative radicand, return false
+        if (radicand < 0) {return false;}
+
+        var time_1      = (-radical + sqrtRadicand) / denominator;
+        var time_2      = (-radical - sqrtRadicand) / denominator;
+
+        // no valid intercept times, return false
+        if (time_1 < 0 && time_2 < 0) {return false;}
+
+        // only use positive times
+        else if (time_1 >= 0 && time_2 < 0)
+        {
+            interceptT = time_1;
+        }
+        else if (time_2 >= 0 && time_1 < 0)
+        {
+            interceptT = time_2;
+        }
+        else
+        {
+            // favor the quicker intercept
+            if (time_1 < time_2)
+            {
+                interceptT = time_1;
+                altT       = time_2;
+            }
+            else
+            {
+                interceptT = time_2;
+                altT       = time_1;
+            }
+        }
+
+        projectileDir = ((targetInitPos - projectilePos) / interceptT) + targetConstVel - (0.5f * (-projectileGravity) * interceptT);
+
+        return true;
     }
 
 
