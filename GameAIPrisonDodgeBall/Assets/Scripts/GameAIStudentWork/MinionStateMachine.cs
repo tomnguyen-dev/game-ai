@@ -163,7 +163,7 @@ public class MinionStateMachine : MonoBehaviour
             }
         }
 
-        projectileDir = ((targetInitPos - projectilePos) / interceptT) + targetConstVel - (0.5f * (-projectileGravity) * interceptT);
+        projectileDir = (((targetInitPos - projectilePos) / interceptT) + targetConstVel - (0.5f * projectileGravity * interceptT)).normalized;
 
         return true;
     }
