@@ -108,7 +108,7 @@ public class MinionStateMachine : MonoBehaviour
 
         // You'll probably want to leave this as is. For advanced prediction you can slow your throw down
         // You don't need to predict the speed of your throw. Only the direction assuming full speed
-        projectileSpeed = maxProjectileSpeed;
+        projectileSpeed = maxProjectileSpeed * 0.9f;
 
         // try Law of Cosines
         // a^2 + b^2 - 2abcos0 = c^2
