@@ -402,7 +402,25 @@ public class MinionStateMachine : MonoBehaviour
 
             // could pick up a ball accidentally before getting to desired ball
             if (Minion.HasBall)
-                return GoToThrowSpotTransition;
+            {
+                // if there is a nearby opponent that you can hit, throw the ball
+                int opponentIndex = -1;
+                if (Mgr.FindClosestNonPrisonerOpponentIndex(Minion.transform.position, Team, out opponentIndex))
+                {
+                    PrisonDodgeballManager.OpponentInfo opponentInfo;
+                    Mgr.GetOpponentInfo(Team, opponentIndex, out opponentInfo);
+                    var canThrow = PredictThrow(Minion.HeldBallPosition, Minion.ThrowSpeed, Physics.gravity,
+                                                opponentInfo.Pos, opponentInfo.Vel, opponentInfo.Forward, MaxAllowedThrowPositionError,
+                                                out var univVDir, out var speedScalar, out var interceptT, out var altT);
+
+                    if (canThrow)
+                        return GoToThrowSpotTransition;
+                }
+
+                // otherwise focus on defense
+                else
+                    return DefenseDemoTransition;
+            }
 
             var dbInfo = TeamData.DBInfo;
 
@@ -488,10 +506,39 @@ public class MinionStateMachine : MonoBehaviour
 
             if (Minion.ReachedTarget())
             {
-                if (FindRescuableTeammate(out var m))
+                // only rescue if we are outnumbered, otherwise target opponent
+                int teamPrisonCount     = 0;
+                int opponentPrisonCount = 0;
+
+                foreach (var minion in TeamData.TeamMates)
                 {
-                    RescueTransition.Arg0 = m;
-                    ret = RescueTransition;
+                    if (minion.IsPrisoner && !minion.IsFreedPrisoner)
+                    {
+                        teamPrisonCount++;
+                    }
+                }
+
+                PrisonDodgeballManager.OpponentInfo[] opponentsInfo = new PrisonDodgeballManager.OpponentInfo[Mgr.TeamSize];
+                Mgr.GetAllOpponentInfo(Team, ref opponentsInfo);
+
+                foreach (var opponent in opponentsInfo)
+                {
+                    if (opponent.IsPrisoner && !opponent.IsFreedPrisoner)
+                    {
+                        opponentPrisonCount++;
+                    }
+                }
+
+                if (teamPrisonCount > opponentPrisonCount){
+                    if (FindRescuableTeammate(out var m))
+                    {
+                        RescueTransition.Arg0 = m;
+                        // wait for teammate to stop moving
+                        if (m.Velocity.magnitude == 0f)
+                        {
+                            ret = RescueTransition;
+                        }
+                    }
                 }
                 else
                     ret = ThrowBallTransition;
@@ -592,6 +639,7 @@ public class MinionStateMachine : MonoBehaviour
 
         DeferredStateTransition<MinionFSMData> CollectBallTransition;
         DeferredStateTransition<MinionFSMData> DefenseDemoTransition;
+        DeferredStateTransition<MinionFSMData, MinionScript> RescueTransition;
 
         public override void Init(IFiniteStateMachine<MinionFSMData> parentFSM, MinionFSMData minFSMData)
         {
@@ -600,6 +648,7 @@ public class MinionStateMachine : MonoBehaviour
             // create deferred transitions in advanced and reuse them to avoid garbage collection hit during game
             CollectBallTransition = ParentFSM.CreateStateTransition(CollectBallStateName);
             DefenseDemoTransition = ParentFSM.CreateStateTransition(DefensiveDemoStateName);
+            RescueTransition      = ParentFSM.CreateStateTransition<MinionScript>(RescueStateName, null, true);
         }
 
 
@@ -648,6 +697,40 @@ public class MinionStateMachine : MonoBehaviour
             if (!hasOpponent)
                 return DefenseDemoTransition;
 
+            int teamPrisonCount     = 0;
+            int opponentPrisonCount = 0;
+
+            foreach (var minion in TeamData.TeamMates)
+            {
+                if (minion.IsPrisoner && !minion.IsFreedPrisoner)
+                {
+                    teamPrisonCount++;
+                }
+            }
+
+            PrisonDodgeballManager.OpponentInfo[] opponentsInfo = new PrisonDodgeballManager.OpponentInfo[Mgr.TeamSize];
+            Mgr.GetAllOpponentInfo(Team, ref opponentsInfo);
+
+            foreach (var opponent in opponentsInfo)
+            {
+                if (opponent.IsPrisoner && !opponent.IsFreedPrisoner)
+                {
+                    opponentPrisonCount++;
+                }
+            }
+
+            if (teamPrisonCount > opponentPrisonCount)
+            {
+                if (FindRescuableTeammate(out var m))
+                {
+                    RescueTransition.Arg0 = m;
+                    // wait for teammate to stop moving
+                    if (m.Velocity.magnitude == 0f)
+                    {
+                        ret = RescueTransition;
+                    }
+                }
+            }
 
             var canThrow = PredictThrow(Minion.HeldBallPosition, Minion.ThrowSpeed, Physics.gravity,
                 opponentInfo.Pos, opponentInfo.Vel, opponentInfo.Forward, MaxAllowedThrowPositionError,
@@ -657,12 +740,31 @@ public class MinionStateMachine : MonoBehaviour
             var intercept = Minion.HeldBallPosition + univVDir * speedScalar * interceptT;
             Minion.FaceTowardsForThrow(intercept);
 
-            if (canThrow)
-            {
-                var speedNorm = speedScalar / Minion.ThrowSpeed;
+            // nav mesh mask for opponent team area
+            int oppTeamNavMask = 0;
 
-                if (Minion.ThrowBall(univVDir, speedNorm))
-                    ret = CollectBallTransition;
+            // what team does the minion making the decision belong to?
+            if (Minion.Team == PrisonDodgeballManager.Team.TeamA)
+            {
+                oppTeamNavMask = Mgr.TeamBNavMeshAreaIndex;
+            }
+            else
+            {
+                oppTeamNavMask = Mgr.TeamANavMeshAreaIndex;
+            }
+            // set the mask for the neutral zone, the opponent's team area, and the walkable area adj to the neutral area and gutters
+            var navmask = (1 << Mgr.NeutralNavMeshAreaIndex) | (1 << oppTeamNavMask) | (1 << Mgr.WalkableNavMeshAreaIndex);
+
+            // make the raycast call. this can be used for checking curr opponent pos against future predicted pos.
+            if (NavMesh.Raycast(opponentInfo.Pos, univVDir, out var hit, navmask))
+            {
+                if (canThrow)
+                {
+                    var speedNorm = speedScalar / Minion.ThrowSpeed;
+
+                    if (Minion.ThrowBall(univVDir, speedNorm))
+                        ret = CollectBallTransition;
+                }
             }
 
 
@@ -718,7 +820,7 @@ public class MinionStateMachine : MonoBehaviour
 
             lastEvade = Time.timeSinceLevelLoad;
 
-            evadeWaitTimeSec = 2f * Minion.EvadeCoolDownTimeSec + 0.1f;
+            evadeWaitTimeSec = Minion.EvadeCoolDownTimeSec;//2f * Minion.EvadeCoolDownTimeSec + 0.1f;
         }
 
         public override void Exit(bool globalTransition)
