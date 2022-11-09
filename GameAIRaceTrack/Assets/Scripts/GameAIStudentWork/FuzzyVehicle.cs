@@ -55,9 +55,9 @@ namespace GameAICourse
         private FuzzySet<FzInputSpeed> GetSpeedSet()
         {
             // copy of ammo set from example
-            IMembershipFunction SlowFx   = new ShoulderMembershipFunction(0f, new Coords(0f, 1f), new Coords(10f,0f), 100f);
-            IMembershipFunction MediumFx = new TriangularMembershipFunction(new Coords(0f, 0f), new Coords(10f, 1f), new Coords(100f, 0f));
-            IMembershipFunction FastFx   = new ShoulderMembershipFunction(0f, new Coords(10f, 0f), new Coords(30f, 1f), 100f);
+            IMembershipFunction SlowFx   = new ShoulderMembershipFunction(0f, new Coords(0f, 1f), new Coords(25f,0f), 100f);
+            IMembershipFunction MediumFx = new TriangularMembershipFunction(new Coords(25f, 0f), new Coords(50f, 1f), new Coords(100f, 0f));
+            IMembershipFunction FastFx   = new ShoulderMembershipFunction(0f, new Coords(50f, 0f), new Coords(100f, 1f), 100f);
 
             FuzzySet<FzInputSpeed> set = new FuzzySet<FzInputSpeed>();
 
@@ -71,9 +71,9 @@ namespace GameAICourse
         // throttle [-1, 1]
         private FuzzySet<FzOutputThrottle> GetThrottleSet()
         {
-            IMembershipFunction BrakeFx      = new ShoulderMembershipFunction(0f, new Coords(0f, 1f), new Coords(10f,0f), 40f);
-            IMembershipFunction CoastFx      = new TriangularMembershipFunction(new Coords(0f, 0f), new Coords(10f, 1f), new Coords(30f, 0f));
-            IMembershipFunction AccelerateFx = new ShoulderMembershipFunction(0f, new Coords(10f, 0f), new Coords(30f, 1f), 40f);
+            IMembershipFunction BrakeFx      = new ShoulderMembershipFunction(-1f, new Coords(-1f, 1f), new Coords(-0.25f, 0f), 1f);
+            IMembershipFunction CoastFx      = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
+            IMembershipFunction AccelerateFx = new ShoulderMembershipFunction(-1.0f, new Coords(0.25f, 0f), new Coords(1.0f, 1.0f), 1.0f);
 
             FuzzySet<FzOutputThrottle> set = new FuzzySet<FzOutputThrottle>();
 
@@ -87,9 +87,9 @@ namespace GameAICourse
         // turn [-1, 1]
         private FuzzySet<FzOutputWheel> GetWheelSet()
         {
-            IMembershipFunction TurnLeftFx  = new ShoulderMembershipFunction(0f, new Coords(0f, 1f), new Coords(10f,0f), 40f);
-            IMembershipFunction StraightFx  = new TriangularMembershipFunction(new Coords(0f, 0f), new Coords(10f, 1f), new Coords(30f, 0f));
-            IMembershipFunction TurnRightFx = new ShoulderMembershipFunction(0f, new Coords(10f, 0f), new Coords(30f, 1f), 40f);
+            IMembershipFunction TurnLeftFx  = new ShoulderMembershipFunction(-1f, new Coords(-1f, 1f), new Coords(-0.25f, 0f), 1f);
+            IMembershipFunction StraightFx  = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
+            IMembershipFunction TurnRightFx = new ShoulderMembershipFunction(-1.0f, new Coords(0.25f, 0f), new Coords(1.0f, 1.0f), 1.0f);
 
             FuzzySet<FzOutputWheel> set = new FuzzySet<FzOutputWheel>();
 
