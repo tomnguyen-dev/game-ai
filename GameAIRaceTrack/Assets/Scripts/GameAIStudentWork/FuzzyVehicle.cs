@@ -108,7 +108,7 @@ namespace GameAICourse
             // negative means car is to the right of center, positive means car is to the left of center
             // seems to max out at around -/+ 2.5 before it starts to come off the track
 
-            IMembershipFunction OnRightFx = new ShoulderMembershipFunction(-2.5f, new Coords(-2.5f, 1f), new Coords(-0f, 0f), 2.5f);
+            IMembershipFunction OnRightFx = new ShoulderMembershipFunction(-2.5f, new Coords(-2.5f, 1f), new Coords(0f, 0f), 2.5f);
             IMembershipFunction CenterFx  = new TriangularMembershipFunction(new Coords(-1f, 0f), new Coords(0f, 1f), new Coords(1, 0f));
             IMembershipFunction OnLeftFx  = new ShoulderMembershipFunction(-2.5f, new Coords(0f, 0f), new Coords(2.5f, 1f), 2.5f);
 
@@ -123,9 +123,11 @@ namespace GameAICourse
 
         private FuzzySet<FzVehicleDirection> GetVehicleDirectionSet()
         {
-            IMembershipFunction TurningLeftFx  = new ShoulderMembershipFunction(-0.8f, new Coords(-0.8f, 1f), new Coords(-0.25f, 0f), 0.8f);
-            IMembershipFunction StraightFx     = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
-            IMembershipFunction TurningRightFx = new ShoulderMembershipFunction(-0.8f, new Coords(0.25f, 0f), new Coords(0.8f, 1.0f), 0.8f);
+            // -/+ 40-ish
+            // left is positive, right is negative value
+            IMembershipFunction TurningRightFx = new ShoulderMembershipFunction(-40f, new Coords(-40f, 1f), new Coords(-10f, 0f), 40f);
+            IMembershipFunction StraightFx     = new TriangularMembershipFunction(new Coords(-10f, 0f), new Coords(0f, 1f), new Coords(10f, 0f));
+            IMembershipFunction TurningLeftFx  = new ShoulderMembershipFunction(-40f, new Coords(10f, 0f), new Coords(40f, 1.0f), 40f);
 
             FuzzySet<FzVehicleDirection> set = new FuzzySet<FzVehicleDirection>();
 
@@ -245,13 +247,18 @@ namespace GameAICourse
 
             fzVehiclePositionSet.Evaluate(sign*distanceToClosestPoint, fzInputValueSet);
 
+            // vehicle direction angle from transform.forward compared to closestPointDirectionOnPath?
+            float vehicleDirection = Vector3.SignedAngle(transform.forward, pathTracker.closestPointDirectionOnPath, Vector3.up);
+            Debug.Log("vehicle direction: " + vehicleDirection);
+            fzVehicleDirectionSet.Evaluate(vehicleDirection, fzInputValueSet);
+
             // Remove these once you get your fuzzy rules working.
             // You can leave one hardcoded while you work on the other.
             // Both steering and throttle must be implemented with variable
             // control and not fixed/hardcoded!
 
-            HardCodeSteering(0f);
-            // HardCodeThrottle(0.5f);
+            // HardCodeSteering(0f);
+            HardCodeThrottle(0.5f);
 
             // Simple example of fuzzification of vehicle state
             // The Speed is fuzzified and stored in fzInputValueSet
@@ -288,6 +295,7 @@ namespace GameAICourse
 
                 AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
                 AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehiclePosition>(fzInputValueSet, strBldr);
+                AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehicleDirection>(fzInputValueSet, strBldr);
 
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputThrottle>(fzThrottleRuleSet, throttleRuleOutput, strBldr);
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputWheel>(fzWheelRuleSet, wheelRuleOutput, strBldr);
