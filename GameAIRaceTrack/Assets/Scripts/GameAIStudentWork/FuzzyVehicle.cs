@@ -90,9 +90,9 @@ namespace GameAICourse
         // turn [-1, 1]
         private FuzzySet<FzOutputWheel> GetWheelSet()
         {
-            IMembershipFunction TurnLeftFx  = new ShoulderMembershipFunction(-1f, new Coords(-1f, 1f), new Coords(-0.25f, 0f), 1f);
+            IMembershipFunction TurnLeftFx  = new ShoulderMembershipFunction(-0.8f, new Coords(-0.8f, 1f), new Coords(-0.25f, 0f), 0.8f);
             IMembershipFunction StraightFx  = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
-            IMembershipFunction TurnRightFx = new ShoulderMembershipFunction(-1.0f, new Coords(0.25f, 0f), new Coords(1.0f, 1.0f), 1.0f);
+            IMembershipFunction TurnRightFx = new ShoulderMembershipFunction(-0.8f, new Coords(0.25f, 0f), new Coords(0.8f, 1.0f), 0.8f);
 
             FuzzySet<FzOutputWheel> set = new FuzzySet<FzOutputWheel>();
 
@@ -105,24 +105,27 @@ namespace GameAICourse
 
         private FuzzySet<FzVehiclePosition> GetVehiclePositionSet()
         {
-            // IMembershipFunction OnLeftFx  =
-            // IMembershipFunction CenterFx  =
-            // IMembershipFunction OnRightFx =
+            // negative means car is to the right of center, positive means car is to the left of center
+            // seems to max out at around -/+ 2.5 before it starts to come off the track
+
+            IMembershipFunction OnRightFx = new ShoulderMembershipFunction(-2.5f, new Coords(-2.5f, 1f), new Coords(-0.5f, 0f), 2.5f);
+            IMembershipFunction CenterFx  = new TriangularMembershipFunction(new Coords(-0.5f, 0f), new Coords(0f, 1f), new Coords(0.5f, 0f));
+            IMembershipFunction OnLeftFx  = new ShoulderMembershipFunction(-2.5f, new Coords(0.5f, 0f), new Coords(2.5f, 1f), 2.5f);
 
             FuzzySet<FzVehiclePosition> set = new FuzzySet<FzVehiclePosition>();
 
-            // set.Set(FzVehiclePosition.OnLeft,  OnLeftFx);
-            // set.Set(FzVehiclePosition.Center,  CenterFx);
-            // set.Set(FzVehiclePosition.OnRight, OnRightFx);
+            set.Set(FzVehiclePosition.OnLeft,   OnLeftFx);
+            set.Set(FzVehiclePosition.OnCenter, CenterFx);
+            set.Set(FzVehiclePosition.OnRight,  OnRightFx);
 
             return set;
         }
 
         private FuzzySet<FzVehicleDirection> GetVehicleDirectionSet()
         {
-            IMembershipFunction TurningLeftFx  = new ShoulderMembershipFunction(-1f, new Coords(-1f, 1f), new Coords(-0.25f, 0f), 1f);
+            IMembershipFunction TurningLeftFx  = new ShoulderMembershipFunction(-0.8f, new Coords(-0.8f, 1f), new Coords(-0.25f, 0f), 0.8f);
             IMembershipFunction StraightFx     = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
-            IMembershipFunction TurningRightFx = new ShoulderMembershipFunction(-1.0f, new Coords(0.25f, 0f), new Coords(1.0f, 1.0f), 1.0f);
+            IMembershipFunction TurningRightFx = new ShoulderMembershipFunction(-0.8f, new Coords(0.25f, 0f), new Coords(0.8f, 1.0f), 0.8f);
 
             FuzzySet<FzVehicleDirection> set = new FuzzySet<FzVehicleDirection>();
 
@@ -142,8 +145,8 @@ namespace GameAICourse
                 // TODO: Add some rules. Here is an example
                 // (Note: these aren't necessarily good rules)
                 If(FzInputSpeed.Slow).Then(FzOutputThrottle.Accelerate),
-                If(FzInputSpeed.Medium).Then(FzOutputThrottle.Accelerate),
-                If(FzInputSpeed.Fast).Then(FzOutputThrottle.Coast)
+                If(FzInputSpeed.Medium).Then(FzOutputThrottle.Coast),
+                If(FzInputSpeed.Fast).Then(FzOutputThrottle.Brake)
                 // If(And(FzInputSpeed.Slow, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Coast),
                 // If(And(FzInputSpeed.Medium, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Brake),
                 // If(And(FzInputSpeed.Fast, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Brake),
@@ -212,7 +215,7 @@ namespace GameAICourse
             fzWheelRuleSet = this.GetWheelRuleSet(fzWheelSet);
 
             // draw line to closestPointOnPath
-            Debug.DrawLine(transform.position, pathTracker.closestPointOnPath, Color.white, 2.5f);
+            Debug.DrawLine(transform.position, transform.forward, Color.red, 2.5f);
         }
 
         System.Text.StringBuilder strBldr = new System.Text.StringBuilder();
@@ -232,13 +235,15 @@ namespace GameAICourse
             Vector2 currPosition = new Vector2(transform.position.x, transform.position.z);
             Vector2 closestPointPosition = new Vector2(pathTracker.closestPointOnPath.x, pathTracker.closestPointOnPath.z);
             float distanceToClosestPoint = Vector2.Distance(currPosition, closestPointPosition);
-            Debug.Log("distance to closest point: " + distanceToClosestPoint);
+
             float signedAngle = Vector3.SignedAngle((transform.position - pathTracker.closestPointOnPath), pathTracker.closestPointDirectionOnPath, Vector3.up);
             float sign = Math.Sign(signedAngle); // negative means car is to the right of center, positive means car is to the left of center
-            Debug.Log("sign = " + sign);
 
-            fzVehicleDirectionSet.Evaluate(sign, fzInputValueSet);
+            // Debug.Log("distance to closest point: " + distanceToClosestPoint);
+            // Debug.Log("sign = " + sign);
+            Debug.Log("signed distance = " + sign*distanceToClosestPoint);
 
+            fzVehiclePositionSet.Evaluate(sign*distanceToClosestPoint, fzInputValueSet);
 
             // Remove these once you get your fuzzy rules working.
             // You can leave one hardcoded while you work on the other.
@@ -246,7 +251,7 @@ namespace GameAICourse
             // control and not fixed/hardcoded!
 
             HardCodeSteering(0f);
-            //HardCodeThrottle(0.5f);
+            // HardCodeThrottle(0.5f);
 
             // Simple example of fuzzification of vehicle state
             // The Speed is fuzzified and stored in fzInputValueSet
@@ -281,7 +286,8 @@ namespace GameAICourse
                 // You will probably want to selectively enable/disable printing
                 // of certain fuzzy states or rules
 
-                AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
+                //AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
+                AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehiclePosition>(fzInputValueSet, strBldr);
 
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputThrottle>(fzThrottleRuleSet, throttleRuleOutput, strBldr);
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputWheel>(fzWheelRuleSet, wheelRuleOutput, strBldr);
