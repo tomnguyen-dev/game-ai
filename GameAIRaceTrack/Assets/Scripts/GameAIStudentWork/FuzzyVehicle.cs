@@ -108,9 +108,9 @@ namespace GameAICourse
             // negative means car is to the right of center, positive means car is to the left of center
             // seems to max out at around -/+ 2.5 before it starts to come off the track
 
-            IMembershipFunction OnRightFx = new ShoulderMembershipFunction(-2.5f, new Coords(-2.5f, 1f), new Coords(-0.5f, 0f), 2.5f);
-            IMembershipFunction CenterFx  = new TriangularMembershipFunction(new Coords(-0.5f, 0f), new Coords(0f, 1f), new Coords(0.5f, 0f));
-            IMembershipFunction OnLeftFx  = new ShoulderMembershipFunction(-2.5f, new Coords(0.5f, 0f), new Coords(2.5f, 1f), 2.5f);
+            IMembershipFunction OnRightFx = new ShoulderMembershipFunction(-2.5f, new Coords(-2.5f, 1f), new Coords(-0f, 0f), 2.5f);
+            IMembershipFunction CenterFx  = new TriangularMembershipFunction(new Coords(-1f, 0f), new Coords(0f, 1f), new Coords(1, 0f));
+            IMembershipFunction OnLeftFx  = new ShoulderMembershipFunction(-2.5f, new Coords(0f, 0f), new Coords(2.5f, 1f), 2.5f);
 
             FuzzySet<FzVehiclePosition> set = new FuzzySet<FzVehiclePosition>();
 
@@ -241,7 +241,7 @@ namespace GameAICourse
 
             // Debug.Log("distance to closest point: " + distanceToClosestPoint);
             // Debug.Log("sign = " + sign);
-            Debug.Log("signed distance = " + sign*distanceToClosestPoint);
+            // Debug.Log("signed distance = " + sign*distanceToClosestPoint);
 
             fzVehiclePositionSet.Evaluate(sign*distanceToClosestPoint, fzInputValueSet);
 
@@ -286,7 +286,7 @@ namespace GameAICourse
                 // You will probably want to selectively enable/disable printing
                 // of certain fuzzy states or rules
 
-                //AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
+                AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
                 AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehiclePosition>(fzInputValueSet, strBldr);
 
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputThrottle>(fzThrottleRuleSet, throttleRuleOutput, strBldr);
