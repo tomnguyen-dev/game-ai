@@ -31,10 +31,13 @@ namespace GameAICourse
         // Here are some basic examples to get you started
         enum FzOutputThrottle {Brake, Coast, Accelerate }
         enum FzOutputWheel { TurnLeft, Straight, TurnRight }
-
         enum FzInputSpeed { Slow, Medium, Fast }
+        enum FzVehiclePosition {OnLeft, OnCenter, OnRight}
+        enum FzVehicleDirection {TurningLeft, Straight, TurningRight}
 
         FuzzySet<FzInputSpeed> fzSpeedSet;
+        FuzzySet<FzVehiclePosition> fzVehiclePositionSet;
+        FuzzySet<FzVehicleDirection> fzVehicleDirectionSet;
 
         FuzzySet<FzOutputThrottle> fzThrottleSet;
         FuzzyRuleSet<FzOutputThrottle> fzThrottleRuleSet;
@@ -100,6 +103,36 @@ namespace GameAICourse
             return set;
         }
 
+        private FuzzySet<FzVehiclePosition> GetVehiclePositionSet()
+        {
+            // IMembershipFunction OnLeftFx  =
+            // IMembershipFunction CenterFx  =
+            // IMembershipFunction OnRightFx =
+
+            FuzzySet<FzVehiclePosition> set = new FuzzySet<FzVehiclePosition>();
+
+            // set.Set(FzVehiclePosition.OnLeft,  OnLeftFx);
+            // set.Set(FzVehiclePosition.Center,  CenterFx);
+            // set.Set(FzVehiclePosition.OnRight, OnRightFx);
+
+            return set;
+        }
+
+        private FuzzySet<FzVehicleDirection> GetVehicleDirectionSet()
+        {
+            IMembershipFunction TurningLeftFx  = new ShoulderMembershipFunction(-1f, new Coords(-1f, 1f), new Coords(-0.25f, 0f), 1f);
+            IMembershipFunction StraightFx     = new TriangularMembershipFunction(new Coords(-0.25f, 0f), new Coords(0f, 1f), new Coords(0.25f, 0f));
+            IMembershipFunction TurningRightFx = new ShoulderMembershipFunction(-1.0f, new Coords(0.25f, 0f), new Coords(1.0f, 1.0f), 1.0f);
+
+            FuzzySet<FzVehicleDirection> set = new FuzzySet<FzVehicleDirection>();
+
+            set.Set(FzVehicleDirection.TurningLeft, TurningLeftFx);
+            set.Set(FzVehicleDirection.Straight, StraightFx);
+            set.Set(FzVehicleDirection.TurningRight, TurningRightFx);
+
+            return set;
+        }
+
 
         private FuzzyRule<FzOutputThrottle>[] GetThrottleRules()
         {
@@ -111,7 +144,17 @@ namespace GameAICourse
                 If(FzInputSpeed.Slow).Then(FzOutputThrottle.Accelerate),
                 If(FzInputSpeed.Medium).Then(FzOutputThrottle.Accelerate),
                 If(FzInputSpeed.Fast).Then(FzOutputThrottle.Coast)
-                //If(FzInputSpeed.Fast).Then(FzOutputThrottle.Brake),
+                // If(And(FzInputSpeed.Slow, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Coast),
+                // If(And(FzInputSpeed.Medium, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Brake),
+                // If(And(FzInputSpeed.Fast, FzOutputWheel.TurnLeft)).Then(FzOutputThrottle.Brake),
+
+                // If(And(FzInputSpeed.Slow, FzOutputWheel.Straight)).Then(FzOutputThrottle.Accelerate),
+                // If(And(FzInputSpeed.Medium, FzOutputWheel.Straight)).Then(FzOutputThrottle.Accelerate),
+                // If(And(FzInputSpeed.Fast, FzOutputWheel.Straight)).Then(FzOutputThrottle.Coast),
+
+                // If(And(FzInputSpeed.Slow, FzOutputWheel.TurnRight)).Then(FzOutputThrottle.Coast),
+                // If(And(FzInputSpeed.Medium, FzOutputWheel.TurnRight)).Then(FzOutputThrottle.Brake),
+                // If(And(FzInputSpeed.Fast, FzOutputWheel.TurnRight)).Then(FzOutputThrottle.Brake),
             };
 
             return rules;
@@ -122,7 +165,9 @@ namespace GameAICourse
 
             FuzzyRule<FzOutputWheel>[] rules =
             {
-                // TODO: Add some rules.
+                If(FzVehicleDirection.TurningLeft).Then(FzOutputWheel.TurnRight),
+                If(FzVehicleDirection.Straight).Then(FzOutputWheel.Straight),
+                If(FzVehicleDirection.TurningRight).Then(FzOutputWheel.TurnLeft)
             };
 
             return rules;
@@ -139,7 +184,6 @@ namespace GameAICourse
             var rules = this.GetWheelRules();
             return new FuzzyRuleSet<FzOutputWheel>(wheel, rules);
         }
-
 
         protected override void Awake()
         {
@@ -158,12 +202,17 @@ namespace GameAICourse
 
             // TODO: You can initialize a bunch of Fuzzy stuff here
             fzSpeedSet = this.GetSpeedSet();
+            fzVehiclePositionSet = this.GetVehiclePositionSet();
+            fzVehicleDirectionSet = this.GetVehicleDirectionSet();
 
             fzThrottleSet = this.GetThrottleSet();
             fzThrottleRuleSet = this.GetThrottleRuleSet(fzThrottleSet);
 
             fzWheelSet = this.GetWheelSet();
             fzWheelRuleSet = this.GetWheelRuleSet(fzWheelSet);
+
+            // draw line to closestPointOnPath
+            Debug.DrawLine(transform.position, pathTracker.closestPointOnPath, Color.white, 2.5f);
         }
 
         System.Text.StringBuilder strBldr = new System.Text.StringBuilder();
@@ -173,6 +222,23 @@ namespace GameAICourse
 
             // TODO Do all your Fuzzy stuff here and then
             // pass your fuzzy rule sets to ApplyFuzzyRules()
+            /***
+            You can get the direction (Beziér curve tangent as a vector directed forwards) at the point on the middle of the track closest to the vehicle.
+            You can then figure out what side of the tangent the vehicle is.
+            You can do this by finding the Vector3.SignedAngle() (or use Cross Product) between the tangent vector and a relative vector formed from closest point on road center to vehicle's transform.position.
+            Extract the angle sign with Math.Sign() or Boolean logic and apply it to the distance the vehicle is from the road center.
+            You now have a signed distance from road center (e.g. lane position), which you can use as a crisp input.
+            ***/
+            Vector2 currPosition = new Vector2(transform.position.x, transform.position.z);
+            Vector2 closestPointPosition = new Vector2(pathTracker.closestPointOnPath.x, pathTracker.closestPointOnPath.z);
+            float distanceToClosestPoint = Vector2.Distance(currPosition, closestPointPosition);
+            Debug.Log("distance to closest point: " + distanceToClosestPoint);
+            float signedAngle = Vector3.SignedAngle((transform.position - pathTracker.closestPointOnPath), pathTracker.closestPointDirectionOnPath, Vector3.up);
+            float sign = Math.Sign(signedAngle); // negative means car is to the right of center, positive means car is to the left of center
+            Debug.Log("sign = " + sign);
+
+            fzVehicleDirectionSet.Evaluate(sign, fzInputValueSet);
+
 
             // Remove these once you get your fuzzy rules working.
             // You can leave one hardcoded while you work on the other.
@@ -180,7 +246,7 @@ namespace GameAICourse
             // control and not fixed/hardcoded!
 
             HardCodeSteering(0f);
-            //HardCodeThrottle(1f);
+            //HardCodeThrottle(0.5f);
 
             // Simple example of fuzzification of vehicle state
             // The Speed is fuzzified and stored in fzInputValueSet
