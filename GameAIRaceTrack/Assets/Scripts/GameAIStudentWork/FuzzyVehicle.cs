@@ -34,10 +34,12 @@ namespace GameAICourse
         enum FzInputSpeed { Slow, Medium, Fast }
         enum FzVehiclePosition {OnFarLeft, OnLeftCenter, OnCenter, OnRightCenter, OnFarRight}
         enum FzVehicleDirection {TurningLeft, Straight, TurningRight}
+        enum FzFuturePoint {Left, Straight, Right}
 
         FuzzySet<FzInputSpeed> fzSpeedSet;
         FuzzySet<FzVehiclePosition> fzVehiclePositionSet;
         FuzzySet<FzVehicleDirection> fzVehicleDirectionSet;
+        FuzzySet<FzFuturePoint> fzFuturePointSet;
 
         FuzzySet<FzOutputThrottle> fzThrottleSet;
         FuzzyRuleSet<FzOutputThrottle> fzThrottleRuleSet;
@@ -142,6 +144,23 @@ namespace GameAICourse
             return set;
         }
 
+        private FuzzySet<FzFuturePoint> GetFuturePointSet()
+        {
+            // positive = turn right
+            // -/+ 10
+            IMembershipFunction LeftFx     = new ShoulderMembershipFunction(-60f, new Coords(-60f, 1f), new Coords(-10f, 0f), 60f);
+            IMembershipFunction StraightFx = new TriangularMembershipFunction(new Coords(-10f, 0f), new Coords(0f, 1f), new Coords(10f, 0f));
+            IMembershipFunction RightFx    = new ShoulderMembershipFunction(-60f, new Coords(10f, 0f), new Coords(60f, 1f), 60f);
+
+            FuzzySet<FzFuturePoint> set = new FuzzySet<FzFuturePoint>();
+
+            set.Set(FzFuturePoint.Left, LeftFx);
+            set.Set(FzFuturePoint.Straight, StraightFx);
+            set.Set(FzFuturePoint.Right, RightFx);
+
+            return set;
+        }
+
 
         private FuzzyRule<FzOutputThrottle>[] GetThrottleRules()
         {
@@ -179,11 +198,14 @@ namespace GameAICourse
                 If(FzVehicleDirection.Straight).Then(FzOutputWheel.Straight),
                 If(FzVehicleDirection.TurningRight).Then(FzOutputWheel.TurnLeft),
 
-                If(FzVehiclePosition.OnFarLeft).Then(FzOutputWheel.TurnRight),
-                If(FzVehiclePosition.OnLeftCenter).Then(FzOutputWheel.Straight),
-                If(FzVehiclePosition.OnCenter).Then(FzOutputWheel.Straight),
-                If(FzVehiclePosition.OnRightCenter).Then(FzOutputWheel.Straight),
-                If(FzVehiclePosition.OnFarRight).Then(FzOutputWheel.TurnLeft),
+                // If(FzVehiclePosition.OnFarLeft).Then(FzOutputWheel.TurnRight),
+                // If(FzVehiclePosition.OnLeftCenter).Then(FzOutputWheel.Straight),
+                // If(FzVehiclePosition.OnCenter).Then(FzOutputWheel.Straight),
+                // If(FzVehiclePosition.OnRightCenter).Then(FzOutputWheel.Straight),
+                // If(FzVehiclePosition.OnFarRight).Then(FzOutputWheel.TurnLeft),
+                If(FzFuturePoint.Left).Then(FzOutputWheel.TurnLeft),
+                If(FzFuturePoint.Straight).Then(FzOutputWheel.Straight),
+                If(FzFuturePoint.Right).Then(FzOutputWheel.TurnRight),
             };
 
             return rules;
@@ -220,6 +242,7 @@ namespace GameAICourse
             fzSpeedSet = this.GetSpeedSet();
             fzVehiclePositionSet = this.GetVehiclePositionSet();
             fzVehicleDirectionSet = this.GetVehicleDirectionSet();
+            fzFuturePointSet = this.GetFuturePointSet();
 
             fzThrottleSet = this.GetThrottleSet();
             fzThrottleRuleSet = this.GetThrottleRuleSet(fzThrottleSet);
@@ -263,13 +286,21 @@ namespace GameAICourse
             // Debug.Log("vehicle direction: " + vehicleDirection);
             fzVehicleDirectionSet.Evaluate(vehicleDirection, fzInputValueSet);
 
+            float lookAhead = (Speed)/3.6f;
+            float distanceOffset = pathTracker.distanceTravelled + lookAhead;
+            // Debug.DrawLine(transform.position, (transform.position+(5*transform.forward)), Color.red, 3f);
+            // Debug.DrawLine(transform.position+transform.forward, pathTracker.pathCreator.path.GetPointAtDistance(distanceOffset), Color.blue, 3f);
+            float futureSignedAngle = Vector3.SignedAngle(((transform.position+(5*transform.forward)) - transform.position), (pathTracker.pathCreator.path.GetPointAtDistance(distanceOffset)-transform.position), Vector3.up);
+            Debug.Log(futureSignedAngle);
+            fzFuturePointSet.Evaluate(futureSignedAngle, fzInputValueSet);
+
             // Remove these once you get your fuzzy rules working.
             // You can leave one hardcoded while you work on the other.
             // Both steering and throttle must be implemented with variable
             // control and not fixed/hardcoded!
 
             // HardCodeSteering(0f);
-            // HardCodeThrottle(0.5f);
+            // HardCodeThrottle(0.7f);
 
             // Simple example of fuzzification of vehicle state
             // The Speed is fuzzified and stored in fzInputValueSet
@@ -304,11 +335,12 @@ namespace GameAICourse
                 // You will probably want to selectively enable/disable printing
                 // of certain fuzzy states or rules
 
-                AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
-                AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehiclePosition>(fzInputValueSet, strBldr);
-                AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehicleDirection>(fzInputValueSet, strBldr);
+                // AIVehicle.DiagnosticPrintFuzzyValueSet<FzInputSpeed>(fzInputValueSet, strBldr);
+                // AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehiclePosition>(fzInputValueSet, strBldr);
+                // AIVehicle.DiagnosticPrintFuzzyValueSet<FzVehicleDirection>(fzInputValueSet, strBldr);
+                AIVehicle.DiagnosticPrintFuzzyValueSet<FzFuturePoint>(fzInputValueSet, strBldr);
 
-                AIVehicle.DiagnosticPrintRuleSet<FzOutputThrottle>(fzThrottleRuleSet, throttleRuleOutput, strBldr);
+                // AIVehicle.DiagnosticPrintRuleSet<FzOutputThrottle>(fzThrottleRuleSet, throttleRuleOutput, strBldr);
                 AIVehicle.DiagnosticPrintRuleSet<FzOutputWheel>(fzWheelRuleSet, wheelRuleOutput, strBldr);
 
                 vizText.text = strBldr.ToString();
